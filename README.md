@@ -36,7 +36,7 @@
 ```
 
 위의 코드에서 세미 콜론 앞에 `v-bind`를 붙여도 되고, 그냥 생략해도 된다. 요지는 html 요소의 속성에 접근하는 방법이라는 것이다. <br />
-해당 속성으로 문자열을 넣어주면, 문자열은 option API의 data()에서 정의해준 상태 변수가 되는데, 물론 `"'someString'"s` 처럼 리터럴 문자열을 넣어줄 수도 있다.
+해당 속성으로 문자열을 넣어주면, 문자열은 option API의 data()에서 정의해준 상태 변수가 되는데, 물론 `"'someString'"` 처럼 리터럴 문자열을 넣어줄 수도 있다.
 
 ### Event Listener
 
@@ -65,6 +65,37 @@ react에서는 {} 내부에서 조건을 분기쳐서 보여주는 방식을 택
     {{ todo.text }}
   </li>
 </ul>
+```
+
+### Computed property
+
+vueJS는 내부적으로 ref()로 만들어진 상태에서 파생되어 계산되는 또 다른 데이터를 최적화하여 적용한다.
+
+### Life cycle and template ref
+
+vueJS 역시 리액트와 마찬가지로 DOM 조작을 사용자가 일일히 할 필요 없이 라이브러리 단에서 해주는 편리한 기술이다. 하지만 개발자는 직접 DOM 객체에 접근하고 싶은 순간이 있다.<br /> 이를 위해 필요한 기술이 바로 `template ref`와 `life cycle` 함수이다.
+
+```js
+const pElementRef = ref(null)
+<p ref="pElementRef">hello</p>
+```
+
+위의 코드처럼 `ref()` 함수를 이용하여 상태를 만들고, 이를 컴포넌트의 ref 속성으로 부여하면 된다. 하지만 template ref는 컴포넌트가 마운트 된 이후에 접근할 수 있다. 왜냐? DOM 에 생성되지도 않은 대상을 그 이전에는 접근할 수 없기 때문이다. 따라서 vueJS에서는 컴포넌트 `life cycle` 함수를 잘 활용하는 것이 중요하다.
+
+```js
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const pElementRef = ref(null)
+
+onMounted(()=> {
+  pElementRef.value.textContent = "seungwan" // textContent 속성에 접근해야 한다.
+})
+</script>
+
+<template>
+  <p ref="pElementRef">Hello</p>
+</template>
 ```
 
 ## Composition API
