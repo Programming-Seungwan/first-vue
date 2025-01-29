@@ -80,7 +80,7 @@ const pElementRef = ref(null)
 <p ref="pElementRef">hello</p>
 ```
 
-위의 코드처럼 `ref()` 함수를 이용하여 상태를 만들고, 이를 컴포넌트의 ref 속성으로 부여하면 된다. 하지만 template ref는 컴포넌트가 마운트 된 이후에 접근할 수 있다. 왜냐? DOM 에 생성되지도 않은 대상을 그 이전에는 접근할 수 없기 때문이다. 따라서 vueJS에서는 컴포넌트 `life cycle` 함수를 잘 활용하는 것이 중요하다.
+위의 코드처럼 `ref()` 함수를 이용하여 상태를 만들고, 이를 컴포넌트의 ref 속성으로 부여하면 된다. 하지만 template ref는 컴포넌트가 마운트 된 이후에 접근할 수 있다. 왜냐? DOM 에 생성되지도 않은 대상을 그 이전에는 접근할 수 없기 때문이다. 따라서 vueJS에서는 컴포넌트 `life cycle` 함수를 잘 활용하는 것이 중요하다. 기존의 option API에서는 이를 메서드 형태로 기술하고 하고 싶은 작업들을 적어주면 된다.
 
 ```js
 <script setup>
@@ -96,6 +96,225 @@ onMounted(()=> {
 <template>
   <p ref="pElementRef">Hello</p>
 </template>
+```
+
+### watch
+
+react에서 side Effect , 즉 컴포넌트의 렌더링을 제외한 작업인 Fetch Data와 같은 일들을 처리할 때에는 `useEffect()` 같은 훅을 이용하곤 했다. vueJS에서는 이를 **watch** 함수를 통해 구현한다. 단, 하나의 상태를 의존성으로 가질 때에는 첫 인자로 ref 상태를 넣어주면 되지만 여러 개일 경우에는 이를 배열의 원소들로 넣어주면 된다. 기존의 option API에서는 `watch :` 다음에 원하는 상태를 함수 형태로 적고 기술해주면 된다.
+
+```js
+watch: {
+    todoId() {
+      this.fetchData()
+    }
+  }
+
+
+```
+
+> 다음의 코드는 composition API에서의 watch 구현 방법이다.
+
+```js
+<script setup>
+import { ref, watch } from 'vue'
+
+const todoId = ref(1)
+const todoData = ref(null)
+
+async function fetchData() {
+  todoData.value = null
+  const res = await fetch(
+    `https://jsonplaceholder.typicode.com/todos/${todoId.value}`
+  )
+  todoData.value = await res.json()
+}
+
+fetchData() // 첫 마운트 시에 실행되는 함수
+
+watch(todoId,() => {
+  fetchData();
+} ) // todoId가 일종의 의존성이고, 이것이 바뀔 때마다 fetchData() 함수가 실행됨
+
+</script>
+
+<template>
+  <p>Todo id: {{ todoId }}</p>
+  <button @click="todoId++" :disabled="!todoData">Fetch next todo</button>
+  <p v-if="!todoData">Loading...</p>
+  <pre v-else>{{ todoData }}</pre>
+</template>
+```
+
+### Components & Props
+
+기존의 reactJS에서는 다른 파일에서 작성한 컴포넌트를 import하여 jsx 형태로 적어주면 되었다. <br />
+먼저 option API에서는 다음과 같다
+
+1. 자식 컴포넌트의 `export default` 구문에서 props 필드로 원하는 필드를 받는다.
+2. 부모 컴포넌트의 `export default` 구문의 components 필드에 import 해온 자식 컴포넌트를 등록해준다.
+   <br/>
+
+반면, composition API에서는 다음과 같다.
+
+1. 자식 컴포넌트의 script setup 구문에서 `defineProps({message: string})` 문법처럼 받을 prop을 정의한다.
+2. 부모 컴포넌트에서는 그냥 script 태그 내에서 import하고 바로 사용하면 된다.
+
+> 다만, 부모 컴포넌트에서 자식 컴포넌트에게 prop을 전달해줄 때에는 v-bind 문법처럼 쓴다.
+
+```js
+<ChildComp :msg="greeting" />
+```
+
+### Emit
+
+기존의 reactJS 프레임워크에서는 자식 컴포넌트가 부모 컴포넌트에게 바로 이벤트를 트리거해서 데이터를 전송해주는 방식이 있지는 않다. 그래서 react 진영에서는 부모 컴포넌트의 상태를 바꾸는 핸들러 함수를 자식 컴포넌트에 전달해주거나, contextAPI를 이용하는 방식이 권장되었다.<br />
+하지만 vueJS에서의 `emit`은 이를 구현하는 기능인데 특징은 다음과 같다.
+
+**option API**
+
+1. 자식 컴포넌트에서 emit 관련 함수를 작성. 당연히 여러 데이터를 보내고 싶다면 객체로 묶어서 보내면 됨
+
+```js
+<template>
+  <div>
+    <h2>자식 컴포넌트</h2>
+    <button @click="sendData">데이터 보내기</button>
+  </div>
+</template>
+
+<script>
+export default {
+  methods: {
+    sendData() {
+      this.$emit('custom-event', '안녕하세요, 부모님!');
+    },
+  },
+};
+</script>
+
+```
+
+2. 부모 컴포넌트에서 `v-on` 문법이나 `@` 문법으로 이를 잡고 받은 데이터를 핸들러 함수로 처리
+
+```js
+<template>
+  <div>
+    <h1>부모 컴포넌트</h1>
+    <ChildComponent @custom-event="handleEvent" />
+    <p>받은 메시지: {{ message }}</p>
+  </div>
+</template>
+
+<script>
+import ChildComponent from './ChildComponent.vue';
+
+export default {
+  components: { ChildComponent },
+  data() {
+    return {
+      message: '',
+    };
+  },
+  methods: {
+    handleEvent(data) {
+      this.message = data;
+    },
+  },
+};
+</script>
+
+```
+
+**composition API**
+
+1. 자식 컴포넌트에서 emit을 선언하고 데이터를 전송.
+
+```js
+<template>
+  <div>
+    <h2>자식 컴포넌트</h2>
+    <button @click="sendData">데이터 보내기</button>
+  </div>
+</template>
+
+<script setup>
+import { defineEmits } from 'vue';
+
+const emit = defineEmits(['custom-event']); // 이벤트 정의
+
+const sendData = () => {
+  emit('custom-event', '안녕하세요, 부모님!'); // 이벤트 발생
+};
+</script>
+
+```
+
+2. 부모 컴포넌트에서 이를 받아서 핸들러 함수로 처리
+
+```js
+<template>
+  <div>
+    <h1>부모 컴포넌트</h1>
+    <ChildComponent @custom-event="handleEvent" />
+    <p>받은 메시지: {{ message }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import ChildComponent from './ChildComponent.vue';
+
+const message = ref('');
+
+const handleEvent = (data) => {
+  message.value = data;
+};
+</script>
+```
+
+### slot
+
+사실 이 기능은 별것 없다. 부모 컴포넌트가 자식 컴포넌트의 내부에 넣은 컴포넌트 코드를 slot이라는 jsx 문법 내에 렌더링하는 기능이다. 물론 부모 컴포넌트가 하나의 fragment만을 전달하는 것은 아니고, `template`으로 감싸고 이름을 전달하면 여러 개도 넣어줄 수 있다.
+
+**자식 컴포넌트**
+
+```js
+<template>
+  <div class="box">
+    <header>
+      <slot name="header"></slot> <!-- "header" 슬롯 -->
+    </header>
+    <main>
+      <slot></slot> <!-- 기본 슬롯 -->
+    </main>
+    <footer>
+      <slot name="footer"></slot> <!-- "footer" 슬롯 -->
+    </footer>
+  </div>
+</template>
+```
+
+**부모 컴포넌트**
+
+```js
+<template>
+  <ChildComponent>
+    <template #header>
+      <h1>헤더 영역</h1>
+    </template>
+
+    <p>이 부분은 기본 슬롯에 들어갑니다.</p>
+
+    <template #footer>
+      <p>푸터 영역</p>
+    </template>
+  </ChildComponent>
+</template>
+
+<script setup>
+import ChildComponent from './ChildComponent.vue';
+</script>
+
 ```
 
 ## Composition API
